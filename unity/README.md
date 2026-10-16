@@ -213,8 +213,8 @@ texture memory (two uncompressed textures, no mipmaps, so the thin digits stay s
 
 ## What has been tested
 
-**Tested by the author, in VRChat (PC, desktop, the author's own avatar, 2026-10-16):** the panel shown in the hand;
-grabbing a grip with the mouse and dragging it changes the value; that value reaches the PC program through OSC (the
+**Tested by the author, in VRChat (PC, the author's own avatar, 2026-10-16):** the panel shown in the hand;
+grabbing a grip and dragging it changes the value; that value reaches the PC program through OSC (the
 slider path: `CoyoteA`/`CoyoteB` = value ÷ 200). The program side has also been tested with a real Coyote 3.0 (see the
 main README).
 
@@ -243,7 +243,8 @@ main README).
 - **Other players** grabbing the panel, and the lock in the world for other players: who can grab, whether a player who
   joins after the panel was locked sees it in the right place, and what the synced values look like to them. This is
   the point of the "Lock in world" feature and it has not been tried.
-- **Grabbing with VR hands.** The author tested on desktop with the mouse.
+- **Which input you use.** The author did not test desktop mode and VR hands/controllers separately, so treat the one you
+  use as unconfirmed until you try it.
 - Anything in VRChat on **any avatar other than the author's**, **the right hand** in the game, and avatars with **Write
   Defaults off** (the build converts the states, which was checked in the editor, not in the game).
 - In the game, separately: the **−/+ buttons**, the **frequency arrows**, **Lock in world** and posing a grip. (Earlier
