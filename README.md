@@ -1,0 +1,260 @@
+# Coyote × VRChat
+
+[![CI](https://github.com/eduardomv13/coyote-vrchat/actions/workflows/ci.yml/badge.svg)](https://github.com/eduardomv13/coyote-vrchat/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+A Windows program that connects **directly over Bluetooth** to a **DG-LAB Coyote 3.0** and receives
+**VRChat OSC**: avatar parameters (`CoyoteA`, `CoyoteB`, `CoyoteFreq`, `CoyoteStop`) control the intensity and
+frequency of the two channels. It has a black-and-gold window, manual sliders, basic patterns, strict safety
+limits, and an optional local API so an AI assistant (Claude) can adjust things — always inside the limits **you**
+set.
+
+No phone app and no second program in the middle: Bluetooth is spoken by this program itself, using the public
+DG-LAB V3 protocol.
+
+> **Not affiliated with DG-LAB or VRChat.** "DG-LAB", "Coyote" and "VRChat" are trademarks of their owners.
+
+---
+
+## ⚠️ Safety first — please read
+
+This software drives an **electro-stimulation device**. Use it responsibly:
+
+- **Adults only, with the informed consent of everyone involved.** Whoever wears the electrodes must be able to stop
+  at any moment.
+- **Never place electrodes on or across the chest/heart, the head, the neck or the throat**, or on broken skin.
+  Do not use it with a pacemaker or other implanted electronics, during pregnancy, with epilepsy or a heart
+  condition, or if a doctor told you to avoid electrical stimulation. When in doubt, ask a medical professional.
+- **Start at zero and go slowly.** The first minutes should be at the lowest intensities (5–10 out of 200).
+- Anything that can write to your avatar's parameters can change the intensity — including other players if you
+  expose controls to them (for example a world-anchored panel). **Only let people you completely trust do that**, and
+  keep the ceilings low.
+- Keep the **STOP ALL** button, the `CoyoteStop` parameter and the device's own physical controls within reach.
+- This is a hobby project provided **as is, with no warranty** (see [LICENSE](LICENSE)). You use it at your own risk.
+
+The program is built so that the safe thing is the default: everything starts at zero, increases are ramped, there is
+an intensity ceiling, a latched emergency stop, and an optional watchdog. Details in [Safety](#7-safety-summary).
+
+---
+
+## What it does
+
+- Direct Bluetooth LE connection to the Coyote 3.0 (V3 protocol), 100 ms command loop, automatic reconnection.
+- Receives VRChat OSC on UDP port 9001: intensity per channel, one frequency for both channels, and an emergency stop.
+- Manual control window: per-channel sliders, frequency, pulse width, 8 waveform patterns.
+- Safety layer: intensity ceiling, maximum rise speed, latched emergency stop, OSC watchdog, zero on (re)connect.
+- Optional AI control through a localhost-only, token-protected API and an MCP server (Claude Code / Claude Desktop),
+  with its own lower ceiling.
+- 175 automated tests (protocol, Bluetooth with a simulated Coyote, OSC, API, MCP, interface logic).
+
+**Tested on:** Windows 11, a real Coyote 3.0, and VRChat on PC. The automated tests use a simulated Coyote. Other
+operating systems are untested (the Bluetooth library, `bleak`, is cross-platform, but nothing here has been tried on
+Linux or macOS).
+
+---
+
+## 1. Install
+
+You need **Windows 10/11 with Bluetooth LE** and **Python 3.10 or newer**
+(<https://www.python.org/downloads/> — during installation, check *Add python.exe to PATH*).
+
+**Easy way:** download or clone this repository and double-click `run.bat`. The first time it creates a `.venv`
+folder and installs the only dependency (`bleak`, the Bluetooth library). After that it just opens the program.
+
+**Manual way** (in a terminal, inside the project folder):
+
+```
+py -3 -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python main.py
+```
+
+Just want to look at the window without the device? `python main.py --simulate` opens the program with a fake
+Coyote.
+
+Command-line options: `--simulate` (fake Coyote), `--connect` (connect on startup), `--headless` (no window, OSC and
+API only), `--settings <file>` (use a different settings file).
+
+## 2. First use (take it slow)
+
+1. **Close any other program that uses the Coyote**: the DG-LAB phone app, other VRChat/OSC controllers, etc. The
+   Coyote only accepts **one** Bluetooth connection at a time.
+2. Turn the Coyote on (leave the device's own intensity at zero) and bring it close to the PC.
+3. Open the program → **Scan** → pick your device (it usually appears as `47L121000`) → **Connect**. The dot turns
+   green and the battery level shows up. (You normally do not need to pair it in Windows settings.)
+4. **Test with low values first**: drag channel A's slider to 5–10 and raise it slowly.
+5. The big **STOP ALL** button (or the `Esc` key with the window focused) zeroes everything and **latches** the
+   controls. To control again, click **RE-ENABLE CONTROLS**. Neither the AI nor VRChat can re-enable them.
+
+## 3. The window
+
+| Panel | What it is for |
+|---|---|
+| Header | Bluetooth, OSC and AI status; STOP ALL button |
+| Bluetooth connection | Scan, connect, disconnect, battery, errors, automatic reconnection |
+| Channel A / Channel B | Intensity 0–200 (slider, −10/−1/+1/+10, Zero), frequency 1–100 Hz, pulse width 0–100. The ▼ on the slider shows the value actually going out during the ramp-up; the red mark is the ceiling |
+| VRChat OSC | Port, address and parameter names; shows whether packets are arriving |
+| Patterns | Constant, Breathing, Pulses, Heartbeat, Ramp, Frequency sweep, Random, Staccato; speed, channels and A/B alternation |
+| Safety limits | Intensity ceiling, maximum rise speed, OSC watchdog |
+| AI | Turns AI control on/off, AI ceiling, command to register in Claude Code |
+| Log | Everything that happened (connections, stops, AI actions…) |
+
+Patterns change the **waveform** (Hz and pulse width). The intensity is still the one from the sliders, VRChat or the
+AI.
+
+## 4. Connecting to VRChat (OSC)
+
+1. In VRChat: radial menu → **Options → OSC → Enabled**.
+2. VRChat **sends** to port **9001** of your PC; the program already listens on it.
+3. Your **avatar needs the parameters below**. How to add them (and a menu to drive them) is explained step by step in
+   **[docs/AVATAR_SETUP.md](docs/AVATAR_SETUP.md)**.
+
+| Avatar parameter | Type | What it does |
+|---|---|---|
+| `CoyoteA` | float 0–1 (or int/bool) | 0 = zero, 1 = the configured **ceiling** (200 by default) on channel A |
+| `CoyoteB` | float 0–1 (or int/bool) | same, channel B |
+| `CoyoteStop` | bool | `true` triggers the same emergency stop as the window (stays latched until you re-enable it) |
+| `CoyoteFreq` | **int**, Hz (1–100) | frequency of **both** channels at once. Only integers count: `0` and floats are ignored (a parameter that is not initialized yet arrives as 0 and must not drop the frequency to 1 Hz). Values above 100 become 100 |
+
+The names can be changed in the window. Any VRChat packet counts as "I am alive": if you enable the **watchdog**
+(Safety limits), the channels commanded by VRChat go back to zero when it stays silent for X seconds (for example,
+if the game freezes).
+
+**Only one program can listen on port 9001.** If "another OSC program may be using this port" shows up, close any
+other OSC tool, or use an OSC router.
+
+### Testing without VRChat
+
+With the program open, send fake avatar parameters from another terminal:
+
+```
+python tools/send_test_osc.py --a 0.05            # channel A at 5% of the ceiling
+python tools/send_test_osc.py --a 0.05 --b 0.05 --freq 60
+python tools/send_test_osc.py --stop              # emergency stop
+python tools/send_test_osc.py --a 0 --b 0         # back to zero
+```
+
+Start the program with `--simulate` if you do not want the real device to react.
+
+## 5. Coyote 3.0 limits (read this)
+
+- **Frequency: 1 to 100 Hz, not 200.** In the V3 protocol the frequency is sent as a *period in milliseconds*
+  (10 to 1000 ms). That gives a maximum of **100 Hz** and a minimum of **1 Hz**. Above 100 Hz simply does not exist on
+  the device, so the program caps it at 100 and never sends a value the device would discard.
+- **Intensity: 0 to 200.** The program writes the chosen ceiling into the device itself (the protocol's `BF` command,
+  "soft limit") on every connection and uses 200 by default. If your device does not go above a lower value, check
+  the limit configured in the device / DG-LAB app.
+- The Coyote needs a command **every 100 ms**; the program handles that in a separate task, so dragging or freezing
+  the window does not interrupt anything.
+
+## 6. AI control (Claude Code / Claude Desktop)
+
+The AI talks to the program through an API that only exists on your computer (`127.0.0.1`) and requires a secret
+token. **It is off by default and always starts off.**
+
+There are **two places** where Claude can be registered, and they are independent:
+
+- **Claude Code in the terminal:** in the **AI** panel, click **Copy MCP command**, paste it into a terminal and
+  press Enter (only once). The command looks like this:
+  `claude mcp add --scope user coyote -- "<python>" "<folder>\coyote_mcp.py"`
+  Check with `claude mcp list` (or `/mcp` inside Claude Code). It applies to **new** terminal sessions.
+- **Claude Desktop app:** click **Register in the Claude Desktop app** in the **AI** panel (or run
+  `python register_claude_desktop.py`). This adds `coyote` to `claude_desktop_config.json` without deleting anything
+  already there (it makes a `.bak-...` copy first). Then **fully quit the Claude app, including from the Windows
+  tray, and open it again**. If the file has a JSON error, the program does not touch it and tells you; use
+  `python register_claude_desktop.py --print` and paste the snippet into Settings > Developer > Edit Config.
+
+Then:
+
+1. Tick **Allow an AI to control** in the window and confirm the warning. The app has to be open (the MCP only talks
+   to it).
+2. Adjust the **AI ceiling** (default **50**) to the maximum you accept it using.
+3. Ask, for example: *"turn channel A on at 20 with 40 Hz and set the Breathing pattern"*.
+
+To test the MCP path without depending on a Claude session, run `mcp_sequence_check.py` (with the app open, the
+Coyote connected and AI allowed): it starts `coyote_mcp.py` the way Claude Code does and sends 50 for 2 s, 100 for 5 s
+and 200 for 1 s through the MCP tools only, showing what the app applied. It respects the same ceilings (it works
+around nothing), asks for Enter before starting, and zeroes the channel at the end or on Ctrl+C. Use `--channel AB`
+for both channels.
+
+Tools the AI gets: `coyote_status`, `coyote_set_intensity`, `coyote_set_frequency`, `coyote_set_pulse_width`,
+`coyote_list_patterns`, `coyote_set_pattern`, `coyote_stop`.
+
+Rules the AI **cannot** get around:
+
+- it only works with the box ticked; unticking it also zeroes what it had turned on;
+- intensity is limited to the **AI ceiling** (default **50**, adjustable on the slider) and to the global ceiling;
+- the rise respects the configured maximum rise speed;
+- `coyote_stop` zeroes everything, but **only you** can re-enable it, from the window.
+
+If you want to use the API directly (other tools): `GET /status`, `GET /patterns`, `POST /intensity`, `/frequency`,
+`/width`, `/pattern`, `/stop`, with the header `Authorization: Bearer <token>` (**Copy token** button).
+
+## 7. Safety (summary)
+
+- Intensities go to **zero** whenever Bluetooth (re)connects and when the program closes.
+- Increasing is gradual (default: 100 per second; 0 → 200 in 2 s). Decreasing is immediate.
+- The emergency stop is **latched**: only the window re-enables it. It works through the button, `Esc`, the VRChat
+  `CoyoteStop` parameter and the AI.
+- The AI API only accepts connections from this same PC, with a token, and refuses web pages (a site open in the
+  browser cannot send a shock).
+- The `Esc` key only works with the program window focused. Inside the game, use the `CoyoteStop` parameter (and the
+  device's physical button still works).
+- Your settings, including the API token, live in `%APPDATA%\CoyoteVRChat\settings.json` — never in this folder, so
+  they cannot end up in a commit by accident.
+
+## 8. Troubleshooting
+
+| Symptom | What to do |
+|---|---|
+| "Coyote not found" | Turn the device on, get closer, close the DG-LAB app/other controllers, check that the PC's Bluetooth is on |
+| It connects but I feel nothing | The channel only outputs with intensity > 0 **and** pulse width > 0; check the electrodes and the device's physical knob |
+| OSC "receiving" never shows up | Is OSC enabled in VRChat? Is port 9001 free? Does the avatar have the parameters? After adding parameters, use *Options → OSC → Reset Config* in VRChat and re-select the avatar. See [docs/AVATAR_SETUP.md](docs/AVATAR_SETUP.md) |
+| OSC shows packets but nothing changes | Only parameters named exactly `CoyoteA`/`CoyoteB`/`CoyoteFreq`/`CoyoteStop` count (names can be changed in the OSC panel). `CoyoteFreq` must be an **int** parameter |
+| Frequency never changes | `CoyoteFreq` ignores `0` and floats on purpose; send an int between 1 and 100 |
+| "tkinter missing" | Reinstall Python with *tcl/tk and IDLE* checked (or use `--headless`) |
+| My configuration got lost | It lives in `%APPDATA%\CoyoteVRChat\settings.json` (if it gets corrupted, the program keeps a `.bak` copy and starts over) |
+
+## 9. Development
+
+```
+python -m unittest        (inside the project folder)
+```
+
+The tests cover the protocol (with the hexadecimal examples from the official documentation), Bluetooth with a
+simulated Coyote, OSC, the API, the MCP server and the interface logic. **What they do not cover:** a real Coyote,
+Windows Bluetooth and the real look of the window — that can only be checked by opening the program. CI runs the
+tests on Windows with Python 3.10 and 3.12.
+
+```
+main.py                      entry point (--simulate, --connect, --headless, --settings)
+coyote_mcp.py                MCP server for Claude Code / Claude Desktop
+register_claude_desktop.py   registers the MCP in the Claude Desktop app
+mcp_sequence_check.py        tests the MCP with a sequence of intensities
+run.bat                      installs and opens (Windows)
+tools/send_test_osc.py       sends fake VRChat OSC parameters to the program
+docs/AVATAR_SETUP.md         adding the parameters and a menu to a VRChat avatar
+coyote_vrc/
+  protocol.py                B0/BF/B1 packets of the BLE V3 protocol and frequency conversion
+  ble.py                     Bluetooth connection (bleak), 100 ms sending, reconnection
+  control.py                 channel state, limits, ramp, emergency stop, patterns
+  patterns.py                the 8 patterns
+  osc.py                     OSC reader (UDP)
+  api.py / mcp_server.py     bridge for the AI
+  engine.py                  wires everything together
+  gui.py                     the window
+  mcp_register.py            registers the MCP in the Claude Desktop app
+tests/                       automated tests
+```
+
+Issues and pull requests are welcome. Please keep the safety behavior intact: anything that raises the intensity must
+go through the ceiling, the ramp limit and the latched stop.
+
+## Credits
+
+The Bluetooth protocol implementation follows DG-LAB's public documentation
+(<https://github.com/dungeonlab-open/dglab-bluetooth-protocol>, Coyote V3). Thanks to DG-LAB for publishing it.
+
+## License
+
+[MIT](LICENSE).
