@@ -45,7 +45,10 @@ an intensity ceiling, a latched emergency stop, and an optional watchdog. Detail
 - Safety layer: intensity ceiling, maximum rise speed, latched emergency stop, OSC watchdog, zero on (re)connect.
 - Optional AI control through a localhost-only, token-protected API and an MCP server (Claude Code / Claude Desktop),
   with its own lower ceiling.
-- 175 automated tests (protocol, Bluetooth with a simulated Coyote, OSC, API, MCP, interface logic).
+- An optional **in-game control panel for your avatar** (sliders, buttons, frequency; a Unity package that installs with
+  Modular Avatar). It is a separate piece: see [unity/README.md](unity/README.md).
+- 182 automated tests (protocol, Bluetooth with a simulated Coyote, OSC, API, MCP, interface logic, and checks on the
+  Unity package that do not need Unity).
 
 **Tested on:** Windows 11, a real Coyote 3.0, and VRChat on PC. The automated tests use a simulated Coyote. Other
 operating systems are untested (the Bluetooth library, `bleak`, is cross-platform, but nothing here has been tried on
@@ -107,7 +110,8 @@ AI.
 1. In VRChat: radial menu → **Options → OSC → Enabled**.
 2. VRChat **sends** to port **9001** of your PC; the program already listens on it.
 3. Your **avatar needs the parameters below**. How to add them (and a menu to drive them) is explained step by step in
-   **[docs/AVATAR_SETUP.md](docs/AVATAR_SETUP.md)**.
+   **[docs/AVATAR_SETUP.md](docs/AVATAR_SETUP.md)**. If you would rather have a ready-made hand-held panel with
+   sliders, install the Unity package in **[unity/](unity/README.md)** instead (read its safety section first).
 
 | Avatar parameter | Type | What it does |
 |---|---|---|
@@ -234,6 +238,7 @@ mcp_sequence_check.py        tests the MCP with a sequence of intensities
 run.bat                      installs and opens (Windows)
 tools/send_test_osc.py       sends fake VRChat OSC parameters to the program
 docs/AVATAR_SETUP.md         adding the parameters and a menu to a VRChat avatar
+unity/                       Unity package: a hand-held control panel for your avatar (Modular Avatar), with its guide
 coyote_vrc/
   protocol.py                B0/BF/B1 packets of the BLE V3 protocol and frequency conversion
   ble.py                     Bluetooth connection (bleak), 100 ms sending, reconnection
@@ -246,6 +251,10 @@ coyote_vrc/
   mcp_register.py            registers the MCP in the Claude Desktop app
 tests/                       automated tests
 ```
+
+The Unity package has its own checks in `tests/test_unity_package.py` (metadata, `.meta` files, layout numbers, the
+offline controller simulator). They do **not** compile the C# or build a panel: that needs Unity, and is described in
+[unity/README.md](unity/README.md#what-has-been-tested).
 
 Issues and pull requests are welcome. Please keep the safety behavior intact: anything that raises the intensity must
 go through the ceiling, the ramp limit and the latched stop.

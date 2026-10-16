@@ -6,6 +6,10 @@ VRChat Avatars SDK (3.x) tools — no extra packages required.
 
 > Read the [safety section of the README](../README.md) first. Everything below can make a
 > real device deliver real stimulation to whoever is wearing it.
+>
+> **Prefer a ready-made hand-held panel with sliders?** There is a Unity package for that, installed with one menu
+> click through Modular Avatar: see [`unity/README.md`](../unity/README.md). Use it *instead of* the radial puppets
+> below for `CoyoteA`/`CoyoteB` (the panel writes those two parameters itself).
 
 ## The contract
 
@@ -87,7 +91,7 @@ see whether your menu control changes it at all, independently of this program.
 ## Giving other people access (read twice)
 
 You can build controls that other players can touch (for example a panel anchored in the world, driven by PhysBones
-or Contacts). That means they can raise your intensity. If you do:
+or Contacts; the [Unity package](../unity/README.md) has a "Lock in world" option that does exactly that). That means they can raise your intensity. If you do:
 
 - keep the **intensity ceiling** in the program low;
 - keep the **rise speed limit** on;
